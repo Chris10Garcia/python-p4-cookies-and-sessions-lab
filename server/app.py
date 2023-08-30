@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, make_response, jsonify, session
+from flask import Flask, make_response, jsonify, session, request
 from flask_migrate import Migrate
 
 from models import db, Article, User
@@ -15,6 +15,8 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
+app.secret_key = b'?w\x85Z\x08Q\xbdO\xb8\xa9\xb65Kj\xa9_'
+
 @app.route('/clear')
 def clear_session():
     session['page_views'] = 0
@@ -23,12 +25,47 @@ def clear_session():
 @app.route('/articles')
 def index_articles():
 
-    pass
+    articles_dict = [article.to_dict() for article in Article.query.all()]
+    
+    response = make_response(
+        jsonify(articles_dict),
+        200
+    )
+
+    return response
 
 @app.route('/articles/<int:id>')
 def show_article(id):
+    articles_dict = Article.query.filter(Article.id == id).first().to_dict()
 
-    pass
+    session["page_views"] = session.get("page_views") or 0
+
+    if session["page_views"] <= 3:
+        session["page_views"] += 1
+
+    if session["page_views"] == 4:
+        response = make_response(
+            jsonify({'message': "Maximum pageview limit reached"}),
+            401
+        )
+    else:
+        response = make_response(
+            jsonify(articles_dict),
+            200
+        )
+
+    # if not hasattr(session, "page_views"):
+    #     session['page_views'] = 0
+
+    # if session['page_views'] < 3:
+    #     session['page_views'] += 1
+    # else:
+    #     pass
+
+
+
+
+    return response
 
 if __name__ == '__main__':
-    app.run(port=5555)
+    app.run(port=5555, debug=True)
